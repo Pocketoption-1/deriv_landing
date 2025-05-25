@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Client Dashboard</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    h2 { color: #333; }
+    label, select, input { display: block; margin: 10px 0; }
+    button { padding: 10px 20px; }
+  </style>
+</head>
+<body>
+  <h2>Welcome to Client Dashboard</h2>
+  <div id="status">Authorizing...</div>
+
+  <div id="trade-form" style="display:none;">
+    <label>Market:
+      <select id="symbol">
+        <option value="R_100">R_100</option>
+        <option value="R_75">R_75</option>
+      </select>
+    </label>
+
+    <label>Amount (USD):
+      <input type="number" id="amount" value="1" />
+    </label>
+
+    <label>Duration (Ticks):
+      <input type="number" id="duration" value="5" />
+    </label>
+
+    <button onclick="buy()">Place Rise Trade</button>
+  </div>
+
+  <script>
+    const app_id = 76088;
+    const redirect_uri = "https://pocketoption-1.github.io/api_server.github.io/";
+
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
+
+    if (!code) {
+      document.getElementById("status").innerText = "Authorization code not found. Please login again.";
+    } else {
+      // Request token from OAuth code
+      fetch("https://oauth.deriv.com/oauth2/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: `grant_type=authorization_code&code=${code}&client_id=${app_id}&redirect_uri=${redirect_uri}`
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.access_token) {
+          window.token = data.access_token;
+          document.getElementById("status").innerText = "Authorized!";
+          document.getElementById("trade-form").style.display = "block";
+        } else {
+          document.getElementById("status").innerText = "Failed to get token.";
+        }
+      })
+      .catch(err => {
+        document.getElementById("status").innerText = "Error: " + err;
+      });
+    }
+
+    function buy() {
+      const ws = new WebSocket("wss://ws.deriv.com/websockets/v3");
+
+      ws.onopen = () => {
+        ws.send(JSON.stringify({ authorize: window.token }));
+      };
+
+      ws.onmessage = (msg) => {
+        const data = JSON.parse(msg.data);
+
+        if (data.msg_type === "authorize") {
+          ws.send(JSON.stringify({
+            buy: 1,
+            price: document.getElementById("amount").value,
+            parameters: {
+              amount: document.getElementById("amount").value,
+              basis: "stake",
+              contract_type: "CALL",
+              currency: "USD",
+              duration: document.getElementById("duration").value,
+              duration_unit: "t",
+              symbol: document.getElementById("symbol").value
+            }
+          }));
+        }
+
+        if (data.msg_type === "buy") {
+          alert("Trade Placed! Contract ID: " + data.buy.contract_id);
+          ws.close();
+        }
+      };
+    }
+  </script>
+</body>
+</html>
