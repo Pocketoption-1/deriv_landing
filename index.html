@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Deriv Login Redirect</title>
+</head>
+<body>
+    <h1>My Deriv App</h1>
+    <button onclick="loginWithDeriv()">Login with Deriv</button>
+
+    <script>
+        function loginWithDeriv() {
+            const YOUR_APP_ID = "71426#f93f3f"; // Replace with your Deriv App ID
+            const OFFICIAL_DERIV_URL = `https://oauth.deriv.com/oauth2/authorize?app_id=${YOUR_APP_ID}&redirect_uri=${encodeURIComponent("https://your-site.com/callback")}`;
+            
+            // Security check
+            if (OFFICIAL_DERIV_URL.includes("deriv.com")) {
+                window.location.href = OFFICIAL_DERIV_URL;
+            } else {
+                alert("Security Alert: Invalid URL!");
+            }
+        }
+    </script>
+</body>
+</html>
